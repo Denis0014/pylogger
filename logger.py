@@ -20,8 +20,6 @@ LEVEL_FORMATS = {
     logging.CRITICAL: BOLD_RED + LOG_FORMAT + RESET,
 }
 
-# LogRecord
-
 class LoggingHandler(StreamHandler):
     def __init__(
         self, 
@@ -94,4 +92,5 @@ mylogger = setup_logger(__name__, logging.INFO, on_error=on_error, on_critical=o
 try:
     a= 1 / 0
 except Exception as e:
+
     mylogger.error(e)
