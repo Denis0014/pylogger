@@ -1,7 +1,7 @@
 import logging
 from typing import Callable, Optional
 from tqdm import tqdm
-from logging import StreamHandler, LogRecord, Formatter
+from logging import Handler, LogRecord, Formatter
 
 GREY = "\x1b[38;20m"
 YELLOW = "\x1b[33;20m"
@@ -20,7 +20,7 @@ LEVEL_FORMATS = {
     logging.CRITICAL: BOLD_RED + LOG_FORMAT + RESET,
 }
 
-class LoggingHandler(StreamHandler):
+class LoggingHandler(Handler):
     def __init__(
         self, 
         on_critical: Optional[Callable[[LogRecord], None]] = None, 
@@ -42,14 +42,21 @@ class LoggingHandler(StreamHandler):
         log_fmt = LEVEL_FORMATS.get(record.levelno, LOG_FORMAT)
         formatter = Formatter(log_fmt, datefmt=TIME_FORMAT)
         return formatter.format(record)
+    
+    def handle(self, record: LogRecord):
+        rv = super().handle(record)
+        if not rv:
+            return rv
+        
+        callback = self.callbacks.get(record.levelno)
+        if callback:
+            callback(record)
+        return rv
 
     def emit(self, record: LogRecord):
         try:
             msg = self.format(record)
-            tqdm.write(msg, end=self.terminator)
-            callback = self.callbacks.get(record.levelno)
-            if callback:
-                callback(record)
+            tqdm.write(msg, end='\n')
         except RecursionError:
             raise
         except Exception as e:
@@ -92,5 +99,4 @@ mylogger = setup_logger(__name__, logging.INFO, on_error=on_error, on_critical=o
 try:
     a= 1 / 0
 except Exception as e:
-
     mylogger.error(e)
