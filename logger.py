@@ -10,7 +10,10 @@ BOLD_RED = "\x1b[31;1m"
 RESET = "\x1b[0m"
 
 TIME_FORMAT = '%Y-%m-%d %H:%M:%S'
-LOG_FORMAT = "[%(asctime)s %(name)s %(levelname)s %(filename)s:%(lineno)d/%(funcName)s] %(message)s"
+LOG_FORMAT = (
+    "[%(asctime)s %(name)s %(levelname)s "
+    "%(filename)s:%(lineno)d/%(funcName)s] %(message)s"
+)
 
 LEVEL_FORMATS = {
     logging.DEBUG: GREY + LOG_FORMAT + RESET,
@@ -20,14 +23,17 @@ LEVEL_FORMATS = {
     logging.CRITICAL: BOLD_RED + LOG_FORMAT + RESET,
 }
 
+LogCallback = Optional[Callable[[LogRecord], None]]
+
+
 class LoggingHandler(Handler):
     def __init__(
-        self, 
-        on_critical: Optional[Callable[[LogRecord], None]] = None, 
-        on_error: Optional[Callable[[LogRecord], None]] = None, 
-        on_warning: Optional[Callable[[LogRecord], None]] = None, 
-        on_info: Optional[Callable[[LogRecord], None]] = None,
-        on_debug: Optional[Callable[[LogRecord], None]] = None
+        self,
+        on_critical: LogCallback = None,
+        on_error: LogCallback = None,
+        on_warning: LogCallback = None,
+        on_info: LogCallback = None,
+        on_debug: LogCallback = None
     ):
         super().__init__()
         self.callbacks = {
@@ -42,12 +48,12 @@ class LoggingHandler(Handler):
         log_fmt = LEVEL_FORMATS.get(record.levelno, LOG_FORMAT)
         formatter = Formatter(log_fmt, datefmt=TIME_FORMAT)
         return formatter.format(record)
-    
+
     def handle(self, record: LogRecord):
         rv = super().handle(record)
         if not rv:
             return rv
-        
+
         callback = self.callbacks.get(record.levelno)
         if callback:
             callback(record)
@@ -59,18 +65,19 @@ class LoggingHandler(Handler):
             tqdm.write(msg, end='\n')
         except RecursionError:
             raise
-        except Exception as e:
+        except Exception:
             self.handleError(record)
 
+
 def setup_logger(
-        name: str,
-        level: int = logging.INFO,
-        on_critical: Optional[Callable[[LogRecord], None]] = None,
-        on_error: Optional[Callable[[LogRecord], None]] = None,
-        on_warning: Optional[Callable[[LogRecord], None]] = None,
-        on_info: Optional[Callable[[LogRecord], None]] = None,
-        on_debug: Optional[Callable[[LogRecord], None]] = None,
-    ) -> logging.Logger:
+    name: str,
+    level: int = logging.INFO,
+    on_critical: LogCallback = None,
+    on_error: LogCallback = None,
+    on_warning: LogCallback = None,
+    on_info: LogCallback = None,
+    on_debug: LogCallback = None,
+) -> logging.Logger:
     logger = logging.getLogger(name)
     logger.setLevel(level)
 
@@ -86,17 +93,24 @@ def setup_logger(
 
     return logger
 
+
 def on_error(record: logging.LogRecord):
     print("Возникла ошибка")
     # Реалзация
+
 
 def on_critical(record: logging.LogRecord):
     print("Возникла критическая ошибка")
     # Реалзация
 
-mylogger = setup_logger(__name__, logging.INFO, on_error=on_error, on_critical=on_critical)
+
+mylogger = setup_logger(
+    __name__, logging.INFO,
+    on_error=on_error,
+    on_critical=on_critical
+)
 
 try:
-    a= 1 / 0
+    a = 1 / 0
 except Exception as e:
     mylogger.error(e)
